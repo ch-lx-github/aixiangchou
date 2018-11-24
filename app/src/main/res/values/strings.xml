@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">爱乡愁</string>
+    <string name="tx_scan_tips">将二维码/条码放入框内, 即可自动扫描</string>
+</resources>
