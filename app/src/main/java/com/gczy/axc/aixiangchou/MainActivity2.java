@@ -29,6 +29,10 @@ import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 
 public class MainActivity2 extends AppCompatActivity {
 
@@ -36,6 +40,7 @@ public class MainActivity2 extends AppCompatActivity {
     private String url = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
 //    private String url = "file:///android_asset/aaa.html";
 //    private String url = "https://www.baidu.com/";
+    private String qrUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -143,12 +148,18 @@ public class MainActivity2 extends AppCompatActivity {
 
                     return true;
                 }
-
+//axc://axc.qrcode.camera?url=http%3A%2F%2Fwww.baidu.com%2Findex.html%23%2Fuser
             } else if (url.startsWith("axc://axc.qrcode.camera")) {
                 new IntentIntegrator(MainActivity2.this)
                         .setOrientationLocked(false)
                         .setCaptureActivity(ScannerActivity.class) // 设置自定义的activity是ScanActivity
                         .initiateScan();
+                qrUrl = Uri.parse(url).getQueryParameter("url");
+                try {
+                    qrUrl = URLDecoder.decode(qrUrl, "utf-8");
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
                 return true;
             }
             return super.shouldOverrideUrlLoading(view, url);
@@ -251,6 +262,13 @@ public class MainActivity2 extends AppCompatActivity {
 //                    ToastUtil.show(R.string.tx_eos_account_specification);
 //                }
                 Toast.makeText(MainActivity2.this, ScanResult,Toast.LENGTH_LONG).show();
+                String pr = "";
+                try {
+                    pr = URLEncoder.encode(ScanResult, "utf-8");
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+                webView.loadUrl(url + "?qrinfo=" + pr);
             }
         }
 //        else if (resultCode == RESULT_OK && requestCode == 100) {
