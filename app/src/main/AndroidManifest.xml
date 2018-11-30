@@ -44,6 +44,10 @@
         <activity
             android:name=".ScannerActivity"
             android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".WebActivity"
+            android:screenOrientation="portrait" />
     </application>
 
 </manifest>

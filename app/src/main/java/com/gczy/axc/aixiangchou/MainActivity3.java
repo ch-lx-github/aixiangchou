@@ -28,10 +28,12 @@ public class MainActivity3 extends AppCompatActivity {
     private Fragment currentFragment;
     private RelativeLayout relativeLayout;
     private FragmentManager manager;
+    private Fragment fragmentGongYi, fragmentLaunch, fragmentCenter;
 
-    private static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
-    private static final String URL_2 = "https://yglian.qschou.com/launch/index.html?ChannelId=gczy";
-    private static final String URL_3 = "https://yglian.qschou.com/center/index.html?ChannelId=gczy";
+//    public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
+    public static final String URL_2 = "https://yglian.qschou.com/launch/index.html?ChannelId=gczy";
+    public static final String URL_3 = "https://yglian.qschou.com/center/index.html?ChannelId=gczy";
+    public static final String URL_1 = "file:///android_asset/aaa.html";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +61,32 @@ public class MainActivity3 extends AppCompatActivity {
         currentFragment = new Fragment();
         manager = getSupportFragmentManager();
 
+        Bundle bundle1 = new Bundle();
+        bundle1.putString("tag", URL_1);
+        fragmentGongYi = new HomeFragment();
+        fragmentGongYi.setArguments(bundle1);
+
+        Bundle bundle2 = new Bundle();
+        bundle2.putString("tag", URL_2);
+        fragmentLaunch = new HomeFragment();
+        fragmentLaunch.setArguments(bundle2);
+
+        Bundle bundle3 = new Bundle();
+        bundle3.putString("tag", URL_3);
+        fragmentCenter = new HomeFragment();
+        fragmentCenter.setArguments(bundle3);
+
+        //默认展示
+        showFragment(fragmentGongYi);
+
+    }
+
+    public void show2(){
+        showFragment(fragmentLaunch);
+    }
+
+    public void show3(){
+        showFragment(fragmentCenter);
     }
 
     /**
@@ -80,10 +108,18 @@ public class MainActivity3 extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         //这是一个监听用的按键的方法，keyCode 监听用户的动作，如果是按了返回键，同时Webview要返回的话，WebView执行回退操作，因为mWebView.canGoBack()返回的是一个Boolean类型，所以我们把它返回为true
-//        if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
-//            webView.goBack();
-//            return true;
-//        }
+
+        if (keyCode == KeyEvent.KEYCODE_BACK && (currentFragment == fragmentLaunch || currentFragment == fragmentCenter)){
+            showFragment(fragmentGongYi);
+            return true;
+        }
+        if (currentFragment == fragmentGongYi){
+            return ((HomeFragment)fragmentGongYi).goBack(keyCode, event);
+        } else if (currentFragment == fragmentLaunch){
+            return ((HomeFragment)fragmentLaunch).goBack(keyCode, event);
+        } else if (currentFragment == fragmentCenter){
+            return ((HomeFragment)fragmentCenter).goBack(keyCode, event);
+        }
 
         return super.onKeyDown(keyCode, event);
     }
@@ -124,6 +160,8 @@ public class MainActivity3 extends AppCompatActivity {
                 String ScanResult = intentResult.getContents();
 
                 Toast.makeText(MainActivity3.this, ScanResult, Toast.LENGTH_LONG).show();
+
+                ((HomeFragment)currentFragment).reLoadQrUrl(ScanResult);
             }
         }
     }

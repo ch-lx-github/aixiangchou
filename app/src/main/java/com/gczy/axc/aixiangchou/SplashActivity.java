@@ -60,7 +60,7 @@ public class SplashActivity extends AppCompatActivity implements Handler.Callbac
         if (firstStart){
             startActivity(new Intent(this, GuideActivity.class));
         } else {
-            startActivity(new Intent(this, MainActivity2.class));
+            startActivity(new Intent(this, MainActivity3.class));
         }
         finish();
     }

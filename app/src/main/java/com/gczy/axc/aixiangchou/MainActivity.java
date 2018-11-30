@@ -40,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private String url = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
 //    private String url = "file:///android_asset/aaa.html";
 //    private String url = "https://www.baidu.com/";
+//    private String url = "https://yglian.qschou.com/gongyi";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
