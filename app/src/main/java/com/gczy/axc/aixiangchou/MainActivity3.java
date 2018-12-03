@@ -30,10 +30,10 @@ public class MainActivity3 extends AppCompatActivity {
     private FragmentManager manager;
     private Fragment fragmentGongYi, fragmentLaunch, fragmentCenter;
 
-//    public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
+    public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
     public static final String URL_2 = "https://yglian.qschou.com/launch/index.html?ChannelId=gczy";
     public static final String URL_3 = "https://yglian.qschou.com/center/index.html?ChannelId=gczy";
-    public static final String URL_1 = "file:///android_asset/aaa.html";
+//    public static final String URL_1 = "file:///android_asset/aaa.html";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

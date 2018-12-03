@@ -1,5 +1,7 @@
 package com.gczy.axc.aixiangchou;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -106,7 +108,7 @@ public class HomeFragment extends Fragment {
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
             if (url.startsWith("weixin://wap/pay?")) {
                 if (!uninstallSoftware(getActivity(), "com.tencent.mm")) {
-//没有安装
+                    //没有安装
                     Toast.makeText(getActivity(), "请先安装微信!", Toast.LENGTH_LONG).show();
                     return true;
                 } else {
@@ -129,6 +131,10 @@ public class HomeFragment extends Fragment {
                         .setOrientationLocked(false)
                         .setCaptureActivity(ScannerActivity.class) // 设置自定义的activity是ScanActivity
                         .initiateScan();
+                return true;
+            } else if (url.startsWith("axc://axc.clipboard.text")){
+                String content = Uri.parse(url).getQueryParameter("text");
+                copyToClipboard("axc",content);
                 return true;
             }
             if (url.equals(MainActivity3.URL_2)) {
@@ -165,7 +171,7 @@ public class HomeFragment extends Fragment {
         }
     };
 
-    public boolean goBack(int keyCode, KeyEvent event){
+    public boolean goBack(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && mWebView.canGoBack()) {
             mWebView.goBack();
             return true;
@@ -187,7 +193,7 @@ public class HomeFragment extends Fragment {
         return false;
     }
 
-    public void reLoadQrUrl(String scanResult){
+    public void reLoadQrUrl(String scanResult) {
         String pr = "";
         try {
             pr = URLEncoder.encode(scanResult, "utf-8");
@@ -195,5 +201,12 @@ public class HomeFragment extends Fragment {
             e.printStackTrace();
         }
         mWebView.loadUrl(qrUrl + "?qrinfo=" + pr);
+    }
+
+    private void copyToClipboard(String label, String content) {
+        final ClipboardManager clipboard = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
+        final ClipData clip = ClipData.newPlainText(label, content);
+        clipboard.setPrimaryClip(clip);
+        Toast.makeText(getActivity(), getString(R.string.copied_to_clipboard), Toast.LENGTH_LONG).show();
     }
 }
