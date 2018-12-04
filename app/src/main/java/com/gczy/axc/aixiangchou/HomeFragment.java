@@ -19,11 +19,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.zxing.integration.android.IntentIntegrator;
@@ -43,6 +46,9 @@ public class HomeFragment extends Fragment {
     private String url;
     private String qrUrl;
 
+    private RelativeLayout relativeLayout;
+    private ImageView ivReload;
+
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -53,6 +59,8 @@ public class HomeFragment extends Fragment {
         Bundle arguments = getArguments();
         url = arguments.getString("tag");
         mWebView = mView.findViewById(R.id.web_content);
+        relativeLayout = mView.findViewById(R.id.rl_net_error);
+        ivReload = mView.findViewById(R.id.iv_reload);
         initWebView();
         return mView;
     }
@@ -84,6 +92,26 @@ public class HomeFragment extends Fragment {
 
         mWebView.setWebViewClient(webViewClient);
 
+        ivReload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (NetWorkUtils.isNetworkConnected(getActivity())){
+                    mWebView.reload();
+//                    mWebView.setVisibility(View.VISIBLE);
+//                    relativeLayout.setVisibility(View.GONE);
+                } else {
+                    Toast.makeText(getActivity(),"请检查网络",Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
+        if (NetWorkUtils.isNetworkConnected(getActivity())){
+            mWebView.setVisibility(View.VISIBLE);
+            relativeLayout.setVisibility(View.GONE);
+        } else {
+            mWebView.setVisibility(View.GONE);
+            relativeLayout.setVisibility(View.VISIBLE);
+        }
         mWebView.loadUrl(url);
     }
 
@@ -101,11 +129,17 @@ public class HomeFragment extends Fragment {
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
 //            mProgressDialog.hide();
+            mWebView.setVisibility(View.VISIBLE);
+            relativeLayout.setVisibility(View.GONE);
 
         }
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            if (!NetWorkUtils.isNetworkConnected(getActivity())){
+                Toast.makeText(getActivity(),"请检查网络",Toast.LENGTH_LONG).show();
+                return true;
+            }
             if (url.startsWith("weixin://wap/pay?")) {
                 if (!uninstallSoftware(getActivity(), "com.tencent.mm")) {
                     //没有安装
@@ -169,7 +203,26 @@ public class HomeFragment extends Fragment {
         public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
             super.onReceivedSslError(view, handler, error);
         }
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            super.onReceivedError(view, request, error);
+            //6.0以上执行
+            showErrorPage();
+        }
+
+        @Override
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            super.onReceivedError(view, errorCode, description, failingUrl);
+            //6.0以下执行
+            showErrorPage();
+        }
     };
+
+    private void showErrorPage(){
+        relativeLayout.setVisibility(View.VISIBLE);
+        mWebView.setVisibility(View.GONE);
+    }
 
     public boolean goBack(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && mWebView.canGoBack()) {

@@ -6,12 +6,18 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.KeyEvent;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 /**
  * Created by lixin on 18/11/26.
@@ -22,12 +28,17 @@ public class WebActivity extends AppCompatActivity {
     private WebView webView;
     private String url;
 
+    private RelativeLayout relativeLayout;
+    private ImageView ivReload;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setStateBarColor();
         setContentView(R.layout.activity_main);
         webView = (WebView) findViewById(R.id.web_content);
+        relativeLayout = (RelativeLayout) findViewById(R.id.rl_net_error);
+        ivReload = (ImageView) findViewById(R.id.iv_reload);
         initData();
         initView();
     }
@@ -88,6 +99,25 @@ public class WebActivity extends AppCompatActivity {
 //        }
 
         webView.setWebViewClient(webViewClient);
+
+        ivReload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (NetWorkUtils.isNetworkConnected(WebActivity.this)){
+                    webView.reload();
+                } else {
+                    Toast.makeText(WebActivity.this,"请检查网络",Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
+        if (NetWorkUtils.isNetworkConnected(this)){
+            webView.setVisibility(View.VISIBLE);
+            relativeLayout.setVisibility(View.GONE);
+        } else {
+            webView.setVisibility(View.GONE);
+            relativeLayout.setVisibility(View.VISIBLE);
+        }
         webView.loadUrl(url);
 
     }
@@ -99,7 +129,33 @@ public class WebActivity extends AppCompatActivity {
 //            view.setWebChromeClient(new WebChromeClientProgress());
             return true;
         }
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            super.onReceivedError(view, request, error);
+            //6.0以上执行
+            showErrorPage();
+        }
+
+        @Override
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            super.onReceivedError(view, errorCode, description, failingUrl);
+            //6.0以下执行
+            showErrorPage();
+        }
+
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            super.onPageFinished(view, url);
+            webView.setVisibility(View.VISIBLE);
+            relativeLayout.setVisibility(View.GONE);
+        }
     };
+
+    private void showErrorPage(){
+        relativeLayout.setVisibility(View.VISIBLE);
+        webView.setVisibility(View.GONE);
+    }
 
 //    private class WebChromeClientProgress extends WebChromeClient {
 //        @Override
