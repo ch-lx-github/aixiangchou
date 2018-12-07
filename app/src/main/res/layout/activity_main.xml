@@ -5,10 +5,15 @@
     android:id="@+id/ll_content"
     android:orientation="vertical">
 
+    <android.support.v4.widget.SwipeRefreshLayout
+        android:id="@+id/main_srl"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
     <WebView
         android:id="@+id/web_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
+    </android.support.v4.widget.SwipeRefreshLayout>
 
     <RelativeLayout
         android:id="@+id/rl_net_error"

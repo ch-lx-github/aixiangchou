@@ -113,12 +113,12 @@ public class MainActivity3 extends AppCompatActivity {
             showFragment(fragmentGongYi);
             return true;
         }
-        if (NetWorkUtils.isNetworkConnected(this) && currentFragment == fragmentGongYi){
-            return ((HomeFragment)fragmentGongYi).goBack(keyCode, event);
-        } else if (NetWorkUtils.isNetworkConnected(this) && currentFragment == fragmentLaunch){
-            return ((HomeFragment)fragmentLaunch).goBack(keyCode, event);
-        } else if (NetWorkUtils.isNetworkConnected(this) && currentFragment == fragmentCenter){
-            return ((HomeFragment)fragmentCenter).goBack(keyCode, event);
+        if (currentFragment == fragmentGongYi && ((HomeFragment)fragmentGongYi).goBack(keyCode, event)){
+            return true;
+        } else if (currentFragment == fragmentLaunch && ((HomeFragment)fragmentLaunch).goBack(keyCode, event)){
+            return true;
+        } else if (currentFragment == fragmentCenter && ((HomeFragment)fragmentCenter).goBack(keyCode, event)){
+            return true;
         }
 
         return super.onKeyDown(keyCode, event);

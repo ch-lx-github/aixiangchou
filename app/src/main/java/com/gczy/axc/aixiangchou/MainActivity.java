@@ -1,5 +1,8 @@
 package com.gczy.axc.aixiangchou;
 
+import android.annotation.TargetApi;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -11,13 +14,16 @@ import android.os.Build;
 import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.SslErrorHandler;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -25,30 +31,51 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
+import com.luck.picture.lib.PictureSelector;
+import com.luck.picture.lib.entity.LocalMedia;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.List;
+
+import static com.yalantis.ucrop.util.FileUtils.getPath;
 
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
-    private String url = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
+    public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
 //    private String url = "file:///android_asset/aaa.html";
 //    private String url = "https://www.baidu.com/";
 //    private String url = "https://yglian.qschou.com/gongyi";
 
+    private String qrUrl;
+
+    private SwipeRefreshLayout swipeRefreshLayout;
+
+    private RelativeLayout relativeLayout;
+    private ImageView ivReload;
+
+    private ValueCallback<Uri[]> mUploadCallbackAboveL;
+    private ValueCallback<Uri> mUploadMessage;
+    private List<LocalMedia> selectList;
+    private final static int FILE_CHOOSER_RESULT_CODE = 10000;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        getWindow().setFlags(WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,  WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
         setStateBarColor();
         setContentView(R.layout.activity_main);
         webView = (WebView) findViewById(R.id.web_content);
+        swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.main_srl);
+        relativeLayout = (RelativeLayout) findViewById(R.id.rl_net_error);
+        ivReload = (ImageView) findViewById(R.id.iv_reload);
         permission();
         initView();
     }
@@ -56,11 +83,9 @@ public class MainActivity extends AppCompatActivity {
     private void setStateBarColor() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
-
-//设置修改状态栏
+            //设置修改状态栏
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-
-//设置状态栏的颜色，和你的app主题或者标题栏颜色设置一致就ok了
+            //设置状态栏的颜色，和你的app主题或者标题栏颜色设置一致就ok了
             window.setStatusBarColor(getResources().getColor(R.color.red));
         }
     }
@@ -82,38 +107,81 @@ public class MainActivity extends AppCompatActivity {
         mWebSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);//提高渲染等级
         mWebSettings.setBuiltInZoomControls(false);// 设置支持缩放
         mWebSettings.setDomStorageEnabled(true);//使用localStorage则必须打开
-        mWebSettings.setBlockNetworkImage(true);// 首先阻塞图片，让图片不显示
-        mWebSettings.setBlockNetworkImage(true);//  页面加载好以后，在放开图片：
         mWebSettings.setSupportMultipleWindows(false);// 设置同一个界面
         mWebSettings.setBlockNetworkImage(false);
         mWebSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         mWebSettings.setNeedInitialFocus(false);// 禁止webview上面控件获取焦点(黄色边框)
-        //设置可以访问文件
-//        mWebSettings.setAllowFileAccess(true);
-//        mWebSettings.setDatabaseEnabled(true);
-//        mWebSettings.setAppCacheEnabled(true);
-//        webView.setWebChromeClient(new WebChromeClient());
-//        mWebSettings.setSupportZoom(true);//是否可以缩放，默认true
-//        mWebSettings.setUseWideViewPort(true);//设置此属性，可任意比例缩放。大视图模式
-//        mWebSettings.setLoadWithOverviewMode(true);//和setUseWideViewPort(true)一起解决网页自适应问题
-//        mWebSettings.setLoadsImagesAutomatically(true); // 加载图片
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-//            mWebSettings.setMediaPlaybackRequiresUserGesture(false);//播放音频，多媒体需要用户手动？设置为false为可自动播放
-//        }
+        mWebSettings.setUserAgentString(mWebSettings.getUserAgentString() + ";YGLian/Android/1.0.1");
 
         webView.setWebViewClient(webViewClient);
-//        if (!TextUtils.isEmpty(u)){
-//            url = u;
-//        }
 
-//        if (NetWorkUtils.isNetworkConnected(this)) {
-            webView.loadUrl(url);
-//        } else {
-//            unZip();
-//            webView.loadUrl("file:///android_asset/v1/index.html");
-//            webView.loadUrl("file:///" + path + "/index.html");
-//        }
+        swipeRefreshLayout.setColorSchemeResources(android.R.color.holo_blue_bright,
+                android.R.color.holo_green_light, android.R.color.holo_orange_light);
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                webView.reload();
+            }
+        });
 
+        ivReload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (NetWorkUtils.isNetworkConnected(MainActivity.this)){
+                    webView.reload();
+                } else {
+                    Toast.makeText(MainActivity.this,"请检查网络",Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
+        if (NetWorkUtils.isNetworkConnected(this)){
+            webView.setVisibility(View.VISIBLE);
+            relativeLayout.setVisibility(View.GONE);
+        } else {
+            webView.setVisibility(View.GONE);
+            relativeLayout.setVisibility(View.VISIBLE);
+        }
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            // For Android 5.0+
+            @Override
+            public boolean onShowFileChooser(WebView webView,
+                                             ValueCallback<Uri[]> filePathCallback,
+                                             FileChooserParams fileChooserParams) {
+                mUploadCallbackAboveL = filePathCallback;
+                openImageChooserActivity();
+//                take();
+                return true;
+            }
+
+            // For Android 3.0+
+            public void openFileChooser(ValueCallback<Uri> uploadMsg) {
+                mUploadMessage = uploadMsg;
+                openImageChooserActivity();
+            }
+
+            //3.0--版本
+            public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType) {
+                mUploadMessage = uploadMsg;
+                openImageChooserActivity();
+            }
+
+            // For Android 4.1
+            public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
+                mUploadMessage = uploadMsg;
+                openImageChooserActivity();
+            }});
+
+        webView.loadUrl(URL_1);
+
+    }
+
+    private void openImageChooserActivity() {
+        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("image/*");
+        startActivityForResult(Intent.createChooser(i, "Image Chooser"), FILE_CHOOSER_RESULT_CODE);
     }
 
     protected WebViewClient webViewClient = new WebViewClient() {
@@ -125,43 +193,50 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
+            webView.setVisibility(View.VISIBLE);
+            relativeLayout.setVisibility(View.GONE);
+            swipeRefreshLayout.setRefreshing(false);
         }
 
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
-//            Intent intent = new Intent(MainActivity.this, MainActivity.class);
-//            intent.putExtra("url",url);
-//            startActivity(intent);
-//            return true;//返回true表明点击网页里面的连接还是在当前的webview里跳转,不跳到浏览器
-
-            // 如下方案可在非微信内部WebView的H5页面中调出微信支付
-
+            if (!NetWorkUtils.isNetworkConnected(MainActivity.this)){
+                Toast.makeText(MainActivity.this,"请检查网络",Toast.LENGTH_LONG).show();
+                return true;
+            }
             if (url.startsWith("weixin://wap/pay?")) {
                 if (!uninstallSoftware(MainActivity.this, "com.tencent.mm")) {
-//没有安装
+                    //没有安装
                     Toast.makeText(MainActivity.this, "请先安装微信!", Toast.LENGTH_LONG).show();
                     return true;
                 } else {
                     //已经安装，可以操作接下来的操作
-
                     Intent intent = new Intent();
-
                     intent.setAction(Intent.ACTION_VIEW);
-
                     intent.setData(Uri.parse(url));
-
                     startActivity(intent);
-
                     return true;
                 }
 
             } else if (url.startsWith("axc://axc.qrcode.camera")) {
+                qrUrl = Uri.parse(url).getQueryParameter("url");
+                try {
+                    qrUrl = URLDecoder.decode(qrUrl, "utf-8");
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
                 new IntentIntegrator(MainActivity.this)
                         .setOrientationLocked(false)
                         .setCaptureActivity(ScannerActivity.class) // 设置自定义的activity是ScanActivity
                         .initiateScan();
                 return true;
+            } else if (url.startsWith("axc://axc.clipboard.text")){
+                String content = Uri.parse(url).getQueryParameter("text");
+                copyToClipboard("axc",content);
+                return true;
+            } else {
+                view.loadUrl(url);
+                return true;
             }
-            return super.shouldOverrideUrlLoading(view, url);
         }
 
         @Override
@@ -172,26 +247,33 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             //网页在webView中打开
-            if(Build.VERSION.SDK_INT <=  Build.VERSION_CODES.LOLLIPOP){//安卓5.0的加载方法
-                view.loadUrl(request.toString());
-            }else {//5.0以上的加载方法
-                view.loadUrl(request.getUrl().toString());
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP) {//安卓5.0的加载方法
+                shouldOverrideUrlLoading(view, request.toString());
+            } else {//5.0以上的加载方法
+                shouldOverrideUrlLoading(view, request.getUrl().toString());
             }
             return true;
         }
 
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-//            super.onReceivedError(view, request, error);
-            unZip();
-            view.loadUrl("file:///" + path + "/index.html");
+            super.onReceivedError(view, request, error);
+            //6.0以上执行
+            showErrorPage();
         }
 
         @Override
-        public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
-            super.onReceivedHttpError(view, request, errorResponse);
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            super.onReceivedError(view, errorCode, description, failingUrl);
+            //6.0以下执行
+            showErrorPage();
         }
     };
+
+    private void showErrorPage(){
+        relativeLayout.setVisibility(View.VISIBLE);
+        webView.setVisibility(View.GONE);
+    }
 
 
     @Override
@@ -266,35 +348,95 @@ public class MainActivity extends AppCompatActivity {
 //                ToastUtil.show(R.string.scan_success);
                 // ScanResult 为 获取到的字符串
                 String ScanResult = intentResult.getContents();
-//                if (EosUtil.checkEosURI(ScanResult)) {
-//                    try {
-//                        ScanResult = URLDecoder.decode(ScanResult, "utf-8");
-//                    } catch (UnsupportedEncodingException e) {
-//                        e.printStackTrace();
-//                    }
-//                    IntentUtil.intentToUri(getActivity(), Uri.parse(ScanResult));
-//                } else {
-//                    ToastUtil.show(R.string.tx_eos_account_specification);
-//                }
-                Toast.makeText(MainActivity.this, ScanResult,Toast.LENGTH_LONG).show();
+
+                Toast.makeText(MainActivity.this, ScanResult, Toast.LENGTH_LONG).show();
             }
         }
-//        else if (resultCode == RESULT_OK && requestCode == 100) {
-//            if (!TextUtils.isEmpty(data.getStringExtra(AppConstants.EXTRA_ACCOUNT))) {
-//                current = getAccountInfoByName(data.getStringExtra(AppConstants.EXTRA_ACCOUNT));
-//                ((MainActivity) getActivity()).hmsWalletAccount = current;
-//                initData();
-//            } else {
-//                ToastUtil.show(getString(R.string.error_switch_account));
-//            }
-//        }
+        else if (requestCode == FILE_CHOOSER_RESULT_CODE){
+
+                if (null == mUploadMessage && null == mUploadCallbackAboveL) return;
+                selectList = PictureSelector.obtainMultipleResult(data);
+                Uri result = data == null || resultCode != RESULT_OK ? null : data.getData();
+                if (mUploadCallbackAboveL != null) {
+                    onActivityResultAboveL(requestCode, resultCode, data);
+                } else if (mUploadMessage != null) {
+                    if (result != null) {
+                        String path = getPath(this.getApplicationContext(),
+                                result);
+                        Uri uri = Uri.fromFile(new File(path));
+                        mUploadMessage.onReceiveValue(uri);
+                    } else {
+//                        mUploadMessage.onReceiveValue(imageUri);
+                    }
+                    mUploadMessage = null;
+
+
+                }
+        }
+
     }
 
-//    @Override
-//    protected void onPause() {
-//        super.onPause();
-//        webView.reload();//退出时关闭声音
-//        Log.d("on", "onStart=="+"onPause");
-//        webView.loadUrl("about:blank");
-//    }
+    @SuppressWarnings("null")
+    @TargetApi(Build.VERSION_CODES.BASE)
+    private void onActivityResultAboveL(int requestCode, int resultCode, Intent data) {
+        if (requestCode != FILE_CHOOSER_RESULT_CODE || mUploadCallbackAboveL == null) {
+            return;
+        }
+
+        Uri[] results = null;
+        String dataString = null;
+        if (data == null) {
+//            results = new Uri[]{imageUri};
+            Log.e("results==null", "results" + results.toString());
+        } else {
+            selectList = PictureSelector.obtainMultipleResult(data);
+            if (selectList != null && selectList.size() > 0) {
+                results=new Uri[selectList.size()];
+                String path ="";
+                for (int i = 0; i < selectList.size(); i++) {
+                    LocalMedia localMedia = selectList.get(i);
+                    if (localMedia.isCut() && !localMedia.isCompressed()) {
+//                    // 裁剪过
+                        path = localMedia.getCutPath();
+                    } else if (localMedia.isCompressed() || (localMedia.isCut() && localMedia.isCompressed())) {
+                        // 压缩过,或者裁剪同时压缩过,以最终压缩过图片为准
+                        path = localMedia.getCompressPath();
+                    } else {
+                        // 原图
+                        path = localMedia.getPath();
+                    }
+                    Uri uri = Uri.fromFile(new File(path));
+                    results[i]=uri;
+                }
+            }
+            dataString = data.getDataString();
+            ClipData clipData = data.getClipData();
+            if (clipData != null) {
+                results = new Uri[clipData.getItemCount()];
+                for (int i = 0; i < clipData.getItemCount(); i++) {
+                    ClipData.Item item = clipData.getItemAt(i);
+                    results[i] = item.getUri();
+                }
+            }
+
+        }
+        if (results != null) {
+            mUploadCallbackAboveL.onReceiveValue(results);
+            mUploadCallbackAboveL = null;
+        } else {
+            results = new Uri[]{Uri.parse(dataString)};
+            mUploadCallbackAboveL.onReceiveValue(results);
+            mUploadCallbackAboveL = null;
+        }
+
+        return;
+    }
+
+    private void copyToClipboard(String label, String content) {
+        final ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        final ClipData clip = ClipData.newPlainText(label, content);
+        clipboard.setPrimaryClip(clip);
+        Toast.makeText(MainActivity.this, getString(R.string.copied_to_clipboard), Toast.LENGTH_LONG).show();
+    }
+
 }

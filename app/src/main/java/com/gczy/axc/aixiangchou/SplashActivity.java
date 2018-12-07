@@ -60,14 +60,9 @@ public class SplashActivity extends AppCompatActivity implements Handler.Callbac
         if (firstStart){
             startActivity(new Intent(this, GuideActivity.class));
         } else {
-            startActivity(new Intent(this, MainActivity3.class));
+            startActivity(new Intent(this, MainActivity.class));
         }
         finish();
     }
 
-//    public void onEvent(Initializer.InitializeEvent event) {
-//        if (isAllowDestory) {
-//            onComplete();
-//        }
-//    }
 }

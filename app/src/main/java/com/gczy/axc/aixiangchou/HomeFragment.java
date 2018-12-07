@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -46,6 +47,8 @@ public class HomeFragment extends Fragment {
     private String url;
     private String qrUrl;
 
+    private SwipeRefreshLayout swipeRefreshLayout;
+
     private RelativeLayout relativeLayout;
     private ImageView ivReload;
 
@@ -58,6 +61,7 @@ public class HomeFragment extends Fragment {
         }
         Bundle arguments = getArguments();
         url = arguments.getString("tag");
+        swipeRefreshLayout = mView.findViewById(R.id.main_srl);
         mWebView = mView.findViewById(R.id.web_content);
         relativeLayout = mView.findViewById(R.id.rl_net_error);
         ivReload = mView.findViewById(R.id.iv_reload);
@@ -91,6 +95,15 @@ public class HomeFragment extends Fragment {
         mWebSettings.setUserAgentString(mWebSettings.getUserAgentString() + ";YGLian/Android/1.0.1");
 
         mWebView.setWebViewClient(webViewClient);
+
+        swipeRefreshLayout.setColorSchemeResources(android.R.color.holo_blue_bright,
+                android.R.color.holo_green_light, android.R.color.holo_orange_light);
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                mWebView.reload();
+            }
+        });
 
         ivReload.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -131,6 +144,7 @@ public class HomeFragment extends Fragment {
 //            mProgressDialog.hide();
             mWebView.setVisibility(View.VISIBLE);
             relativeLayout.setVisibility(View.GONE);
+            swipeRefreshLayout.setRefreshing(false);
 
         }
 
