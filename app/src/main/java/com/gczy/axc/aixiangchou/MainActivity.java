@@ -22,6 +22,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -43,6 +44,7 @@ import com.luck.picture.lib.entity.LocalMedia;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.List;
 
 import static com.yalantis.ucrop.util.FileUtils.getPath;
@@ -50,8 +52,9 @@ import static com.yalantis.ucrop.util.FileUtils.getPath;
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
-    public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
-//    private String url = "file:///android_asset/aaa.html";
+//    public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
+//    public static final String URL_1 = "https://yglian.qschou.com/gongyi/activity";
+    public static final String URL_1 = "file:///android_asset/aaa.html";
 //    private String url = "https://www.baidu.com/";
 //    private String url = "https://yglian.qschou.com/gongyi";
 
@@ -109,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
         mWebSettings.setDomStorageEnabled(true);//使用localStorage则必须打开
         mWebSettings.setSupportMultipleWindows(false);// 设置同一个界面
         mWebSettings.setBlockNetworkImage(false);
-        mWebSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        mWebSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
         mWebSettings.setNeedInitialFocus(false);// 禁止webview上面控件获取焦点(黄色边框)
         mWebSettings.setUserAgentString(mWebSettings.getUserAgentString() + ";YGLian/Android/1.0.1");
 
@@ -120,28 +123,30 @@ public class MainActivity extends AppCompatActivity {
         swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                webView.reload();
+//                webView.reload();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    webView.evaluateJavascript("javascript:change()", new ValueCallback<String>() {
+                        @Override
+                        public void onReceiveValue(String s) {
+                            Toast.makeText(MainActivity.this, s, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                } else {
+                    webView.reload();
+                }
             }
         });
 
         ivReload.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (NetWorkUtils.isNetworkConnected(MainActivity.this)){
+                if (NetWorkUtils.isNetworkConnected(MainActivity.this)) {
                     webView.reload();
                 } else {
-                    Toast.makeText(MainActivity.this,"请检查网络",Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, "请检查网络", Toast.LENGTH_LONG).show();
                 }
             }
         });
-
-        if (NetWorkUtils.isNetworkConnected(this)){
-            webView.setVisibility(View.VISIBLE);
-            relativeLayout.setVisibility(View.GONE);
-        } else {
-            webView.setVisibility(View.GONE);
-            relativeLayout.setVisibility(View.VISIBLE);
-        }
 
         webView.setWebChromeClient(new WebChromeClient() {
             // For Android 5.0+
@@ -171,7 +176,18 @@ public class MainActivity extends AppCompatActivity {
             public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
                 mUploadMessage = uploadMsg;
                 openImageChooserActivity();
-            }});
+            }
+        });
+
+        webView.addJavascriptInterface(new AndroidToJs(), "jsBrige");
+
+        if (NetWorkUtils.isNetworkConnected(this)) {
+            webView.setVisibility(View.VISIBLE);
+            relativeLayout.setVisibility(View.GONE);
+        } else {
+            webView.setVisibility(View.GONE);
+            relativeLayout.setVisibility(View.VISIBLE);
+        }
 
         webView.loadUrl(URL_1);
 
@@ -179,6 +195,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void openImageChooserActivity() {
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        i.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("image/*");
         startActivityForResult(Intent.createChooser(i, "Image Chooser"), FILE_CHOOSER_RESULT_CODE);
@@ -188,19 +206,22 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             super.onPageStarted(view, url, favicon);
+            errorPage = false;
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
-            webView.setVisibility(View.VISIBLE);
-            relativeLayout.setVisibility(View.GONE);
-            swipeRefreshLayout.setRefreshing(false);
+            if (!errorPage){
+                webView.setVisibility(View.VISIBLE);
+                relativeLayout.setVisibility(View.GONE);
+                swipeRefreshLayout.setRefreshing(false);
+            }
         }
 
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            if (!NetWorkUtils.isNetworkConnected(MainActivity.this)){
-                Toast.makeText(MainActivity.this,"请检查网络",Toast.LENGTH_LONG).show();
+            if (!NetWorkUtils.isNetworkConnected(MainActivity.this)) {
+                Toast.makeText(MainActivity.this, "请检查网络", Toast.LENGTH_LONG).show();
                 return true;
             }
             if (url.startsWith("weixin://wap/pay?")) {
@@ -229,9 +250,9 @@ public class MainActivity extends AppCompatActivity {
                         .setCaptureActivity(ScannerActivity.class) // 设置自定义的activity是ScanActivity
                         .initiateScan();
                 return true;
-            } else if (url.startsWith("axc://axc.clipboard.text")){
+            } else if (url.startsWith("axc://axc.clipboard.text")) {
                 String content = Uri.parse(url).getQueryParameter("text");
-                copyToClipboard("axc",content);
+                copyToClipboard("axc", content);
                 return true;
             } else {
                 view.loadUrl(url);
@@ -270,9 +291,12 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private void showErrorPage(){
+    private boolean errorPage;
+
+    private void showErrorPage() {
         relativeLayout.setVisibility(View.VISIBLE);
         webView.setVisibility(View.GONE);
+        errorPage = true;
     }
 
 
@@ -347,31 +371,31 @@ public class MainActivity extends AppCompatActivity {
             } else {
 //                ToastUtil.show(R.string.scan_success);
                 // ScanResult 为 获取到的字符串
-                String ScanResult = intentResult.getContents();
+                String scanResult = intentResult.getContents();
 
-                Toast.makeText(MainActivity.this, ScanResult, Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, scanResult, Toast.LENGTH_LONG).show();
+                reLoadQrUrl(scanResult);
             }
-        }
-        else if (requestCode == FILE_CHOOSER_RESULT_CODE){
+        } else if (requestCode == FILE_CHOOSER_RESULT_CODE) {
 
-                if (null == mUploadMessage && null == mUploadCallbackAboveL) return;
-                selectList = PictureSelector.obtainMultipleResult(data);
-                Uri result = data == null || resultCode != RESULT_OK ? null : data.getData();
-                if (mUploadCallbackAboveL != null) {
-                    onActivityResultAboveL(requestCode, resultCode, data);
-                } else if (mUploadMessage != null) {
-                    if (result != null) {
-                        String path = getPath(this.getApplicationContext(),
-                                result);
-                        Uri uri = Uri.fromFile(new File(path));
-                        mUploadMessage.onReceiveValue(uri);
-                    } else {
-//                        mUploadMessage.onReceiveValue(imageUri);
-                    }
-                    mUploadMessage = null;
-
-
+            if (null == mUploadMessage && null == mUploadCallbackAboveL) return;
+            selectList = PictureSelector.obtainMultipleResult(data);
+            Uri result = data == null || resultCode != RESULT_OK ? null : data.getData();
+            if (mUploadCallbackAboveL != null) {
+                onActivityResultAboveL(requestCode, resultCode, data);
+            } else if (mUploadMessage != null) {
+                if (result != null) {
+                    String path = getPath(this.getApplicationContext(),
+                            result);
+                    Uri uri = Uri.fromFile(new File(path));
+                    mUploadMessage.onReceiveValue(uri);
+                } else {
+                    mUploadMessage.onReceiveValue(null);
                 }
+                mUploadMessage = null;
+
+
+            }
         }
 
     }
@@ -387,12 +411,12 @@ public class MainActivity extends AppCompatActivity {
         String dataString = null;
         if (data == null) {
 //            results = new Uri[]{imageUri};
-            Log.e("results==null", "results" + results.toString());
+//            Log.e("results==null", "results" + results.toString());
         } else {
             selectList = PictureSelector.obtainMultipleResult(data);
             if (selectList != null && selectList.size() > 0) {
-                results=new Uri[selectList.size()];
-                String path ="";
+                results = new Uri[selectList.size()];
+                String path = "";
                 for (int i = 0; i < selectList.size(); i++) {
                     LocalMedia localMedia = selectList.get(i);
                     if (localMedia.isCut() && !localMedia.isCompressed()) {
@@ -406,7 +430,7 @@ public class MainActivity extends AppCompatActivity {
                         path = localMedia.getPath();
                     }
                     Uri uri = Uri.fromFile(new File(path));
-                    results[i]=uri;
+                    results[i] = uri;
                 }
             }
             dataString = data.getDataString();
@@ -424,7 +448,7 @@ public class MainActivity extends AppCompatActivity {
             mUploadCallbackAboveL.onReceiveValue(results);
             mUploadCallbackAboveL = null;
         } else {
-            results = new Uri[]{Uri.parse(dataString)};
+            results = new Uri[]{Uri.parse(dataString == null ? "" : dataString)};
             mUploadCallbackAboveL.onReceiveValue(results);
             mUploadCallbackAboveL = null;
         }
@@ -438,5 +462,37 @@ public class MainActivity extends AppCompatActivity {
         clipboard.setPrimaryClip(clip);
         Toast.makeText(MainActivity.this, getString(R.string.copied_to_clipboard), Toast.LENGTH_LONG).show();
     }
+
+    public void reLoadQrUrl(String scanResult) {
+        String pr = "";
+        try {
+            pr = URLEncoder.encode(scanResult, "utf-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        webView.loadUrl(qrUrl + "?qrinfo=" + pr);
+    }
+
+    public class AndroidToJs extends Object {
+
+        // 定义JS需要调用的方法
+        // 被JS调用的方法必须加入@JavascriptInterface注解
+        @JavascriptInterface
+        public void toast(String msg) {
+            Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+        }
+        @JavascriptInterface
+        public void finish() {
+            Toast.makeText(MainActivity.this, "刷新", Toast.LENGTH_SHORT).show();
+            swipeRefreshLayout.post(new Runnable() {
+                @Override
+                public void run() {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+            });
+
+        }
+    }
+
 
 }

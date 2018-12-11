@@ -26,7 +26,7 @@ public class ScannerActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scanner);
         initView();
-        initScanner();
+        initScanner(savedInstanceState);
     }
 
     private void initView() {
@@ -40,9 +40,10 @@ public class ScannerActivity extends AppCompatActivity {
         });
     }
 
-    private void initScanner() {
+    private void initScanner(Bundle savedInstanceState) {
         this.capture = new CaptureManager(this, scanner);
-        capture.decode();
+        this.capture.initializeFromIntent(getIntent(), savedInstanceState);
+        this.capture.decode();
         this.capture.onResume();
     }
 
@@ -72,5 +73,17 @@ public class ScannerActivity extends AppCompatActivity {
         } catch (final IllegalArgumentException ex) {
             ex.printStackTrace();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        this.capture.onResume();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        this.capture.onDestroy();
     }
 }
