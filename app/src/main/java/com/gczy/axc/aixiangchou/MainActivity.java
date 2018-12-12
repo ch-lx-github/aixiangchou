@@ -17,6 +17,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -52,9 +53,9 @@ import static com.yalantis.ucrop.util.FileUtils.getPath;
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
-//    public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
-//    public static final String URL_1 = "https://yglian.qschou.com/gongyi/activity";
-    public static final String URL_1 = "file:///android_asset/aaa.html";
+//        public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
+    public static final String URL_1 = "https://yglian.qschou.com/gongyi/activity";
+//    public static final String URL_1 = "file:///android_asset/aaa.html";
 //    private String url = "https://www.baidu.com/";
 //    private String url = "https://yglian.qschou.com/gongyi";
 
@@ -95,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initView() {
         webView.clearHistory();
-        webView.clearCache(false);
+        webView.clearCache(true);
         webView.clearFormData();
         webView.setScrollBarStyle(WebView.SCROLLBARS_OUTSIDE_OVERLAY);// 隐藏滚动条webView.requestFocus();
         webView.requestFocusFromTouch();
@@ -125,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
             public void onRefresh() {
 //                webView.reload();
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                    webView.evaluateJavascript("javascript:change()", new ValueCallback<String>() {
+                    webView.evaluateJavascript("javascript:reloadData()", new ValueCallback<String>() {
                         @Override
                         public void onReceiveValue(String s) {
                             Toast.makeText(MainActivity.this, s, Toast.LENGTH_SHORT).show();
@@ -212,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
-            if (!errorPage){
+            if (!errorPage) {
                 webView.setVisibility(View.VISIBLE);
                 relativeLayout.setVisibility(View.GONE);
                 swipeRefreshLayout.setRefreshing(false);
@@ -302,10 +303,14 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        //这是一个监听用的按键的方法，keyCode 监听用户的动作，如果是按了返回键，同时Webview要返回的话，WebView执行回退操作，因为mWebView.canGoBack()返回的是一个Boolean类型，所以我们把它返回为true
-        if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
-            webView.goBack();
-            return true;
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (webView.canGoBack()) {
+                webView.goBack();
+                return true;
+            } else {
+                moveTaskToBack(true);
+                return true;
+            }
         }
 
         return super.onKeyDown(keyCode, event);
@@ -374,7 +379,19 @@ public class MainActivity extends AppCompatActivity {
                 String scanResult = intentResult.getContents();
 
                 Toast.makeText(MainActivity.this, scanResult, Toast.LENGTH_LONG).show();
-                reLoadQrUrl(scanResult);
+                if (!TextUtils.isEmpty(qrUrl) && qrUrl.startsWith("http")) {
+                    reLoadQrUrl(scanResult);
+                } else {
+                    //js qr code
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                        webView.evaluateJavascript("javascript:scanResult('" + scanResult + "')", new ValueCallback<String>() {
+                            @Override
+                            public void onReceiveValue(String s) {
+                                Toast.makeText(MainActivity.this, s, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                }
             }
         } else if (requestCode == FILE_CHOOSER_RESULT_CODE) {
 
@@ -471,9 +488,10 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         webView.loadUrl(qrUrl + "?qrinfo=" + pr);
+        qrUrl = "";
     }
 
-    public class AndroidToJs extends Object {
+    public class AndroidToJs {
 
         // 定义JS需要调用的方法
         // 被JS调用的方法必须加入@JavascriptInterface注解
@@ -481,9 +499,10 @@ public class MainActivity extends AppCompatActivity {
         public void toast(String msg) {
             Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
         }
+
         @JavascriptInterface
         public void finish() {
-            Toast.makeText(MainActivity.this, "刷新", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "刷新成功", Toast.LENGTH_SHORT).show();
             swipeRefreshLayout.post(new Runnable() {
                 @Override
                 public void run() {
@@ -491,6 +510,23 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+        }
+
+        @JavascriptInterface
+        public void scanCode() {
+            new IntentIntegrator(MainActivity.this)
+                    .setOrientationLocked(false)
+                    .setCaptureActivity(ScannerActivity.class) // 设置自定义的activity是ScanActivity
+                    .initiateScan();
+        }
+        @JavascriptInterface
+        public void reload() {
+            webView.post(new Runnable() {
+                @Override
+                public void run() {
+                    webView.reload();
+                }
+            });
         }
     }
 
