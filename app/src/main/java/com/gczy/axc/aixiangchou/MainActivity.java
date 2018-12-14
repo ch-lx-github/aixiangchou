@@ -7,7 +7,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
@@ -53,8 +56,8 @@ import static com.yalantis.ucrop.util.FileUtils.getPath;
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
-//        public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
-    public static final String URL_1 = "https://yglian.qschou.com/gongyi/activity";
+      public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
+//    public static final String URL_1 = "https://yglian.qschou.com/gongyi/activity";
 //    public static final String URL_1 = "file:///android_asset/aaa.html";
 //    private String url = "https://www.baidu.com/";
 //    private String url = "https://yglian.qschou.com/gongyi";
@@ -76,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setStateBarColor();
         setContentView(R.layout.activity_main);
+        startActivity(new Intent(MainActivity.this, SplashActivity.class));
         webView = (WebView) findViewById(R.id.web_content);
         swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.main_srl);
         relativeLayout = (RelativeLayout) findViewById(R.id.rl_net_error);
@@ -93,6 +97,14 @@ public class MainActivity extends AppCompatActivity {
             window.setStatusBarColor(getResources().getColor(R.color.red));
         }
     }
+
+//    private void preload(){
+//        if (getIntent().getBooleanExtra("first", true)){
+//            startActivity(new Intent(MainActivity.this, SplashActivity.class));
+//        } else {
+//            startActivity(new Intent(MainActivity.this, GuideActivity.class));
+//        }
+//    }
 
     private void initView() {
         webView.clearHistory();
@@ -113,7 +125,8 @@ public class MainActivity extends AppCompatActivity {
         mWebSettings.setDomStorageEnabled(true);//使用localStorage则必须打开
         mWebSettings.setSupportMultipleWindows(false);// 设置同一个界面
         mWebSettings.setBlockNetworkImage(false);
-        mWebSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+//        mWebSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);//先加载缓存再访问网络
+        mWebSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);//不使用缓存
         mWebSettings.setNeedInitialFocus(false);// 禁止webview上面控件获取焦点(黄色边框)
         mWebSettings.setUserAgentString(mWebSettings.getUserAgentString() + ";YGLian/Android/1.0.1");
 
@@ -251,7 +264,12 @@ public class MainActivity extends AppCompatActivity {
                         .setCaptureActivity(ScannerActivity.class) // 设置自定义的activity是ScanActivity
                         .initiateScan();
                 return true;
-            } else if (url.startsWith("axc://axc.clipboard.text")) {
+            }
+            else if (url.startsWith("aaa://aaa.aaa.aaa")){
+                message();
+                return true;
+            }
+            else if (url.startsWith("axc://axc.clipboard.text")) {
                 String content = Uri.parse(url).getQueryParameter("text");
                 copyToClipboard("axc", content);
                 return true;
@@ -512,6 +530,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
+        //扫码
         @JavascriptInterface
         public void scanCode() {
             new IntentIntegrator(MainActivity.this)
@@ -519,6 +538,8 @@ public class MainActivity extends AppCompatActivity {
                     .setCaptureActivity(ScannerActivity.class) // 设置自定义的activity是ScanActivity
                     .initiateScan();
         }
+
+        //重新加载网页
         @JavascriptInterface
         public void reload() {
             webView.post(new Runnable() {
@@ -528,6 +549,48 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+
+        //系统声音
+        @JavascriptInterface
+        public void prompt() {
+            Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+            r.play();
+        }
+    }
+
+    private void message() {
+        BadgeUtilDeskTop.setBadgeCount(this,0);
+    }
+
+    /**
+     * Retrieve launcher activity name of the application from the context
+     *
+     * @param context The context of the application package.
+     * @return launcher activity name of this application. From the
+     *         "android:name" attribute.
+     */
+    private static String getLauncherClassName(Context context) {
+        PackageManager packageManager = context.getPackageManager();
+
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        // To limit the components this Intent will resolve to, by setting an
+        // explicit package name.
+        intent.setPackage(context.getPackageName());
+        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+
+        // All Application must have 1 Activity at least.
+        // Launcher activity must be found!
+        ResolveInfo info = packageManager
+                .resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+
+        // get a ResolveInfo containing ACTION_MAIN, CATEGORY_LAUNCHER
+        // if there is no Activity which has filtered by CATEGORY_DEFAULT
+        if (info == null) {
+            info = packageManager.resolveActivity(intent, 0);
+        }
+
+        return info.activityInfo.name;
     }
 
 
