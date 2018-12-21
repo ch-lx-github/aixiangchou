@@ -50,15 +50,16 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.List;
+import java.util.UUID;
 
 import static com.yalantis.ucrop.util.FileUtils.getPath;
 
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
-      public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
+//    public static final String URL_1 = "https://yglian.qschou.com/gongyi/publicSite/index?ChannelId=gczy";
 //    public static final String URL_1 = "https://yglian.qschou.com/gongyi/activity";
-//    public static final String URL_1 = "file:///android_asset/aaa.html";
+    public static final String URL_1 = "file:///android_asset/aaa.html";
 //    private String url = "https://www.baidu.com/";
 //    private String url = "https://yglian.qschou.com/gongyi";
 
@@ -145,6 +146,12 @@ public class MainActivity extends AppCompatActivity {
                             Toast.makeText(MainActivity.this, s, Toast.LENGTH_SHORT).show();
                         }
                     });
+                    webView.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            swipeRefreshLayout.setRefreshing(false);
+                        }
+                    }, 5000);
                 } else {
                     webView.reload();
                 }
@@ -264,12 +271,11 @@ public class MainActivity extends AppCompatActivity {
                         .setCaptureActivity(ScannerActivity.class) // 设置自定义的activity是ScanActivity
                         .initiateScan();
                 return true;
-            }
-            else if (url.startsWith("aaa://aaa.aaa.aaa")){
-                message();
+            } else if (url.startsWith("aaa://aaa.aaa.aaa")) {
+//                message(77);
+                Log.i("unID==>>",getUniquePsuedoID());
                 return true;
-            }
-            else if (url.startsWith("axc://axc.clipboard.text")) {
+            } else if (url.startsWith("axc://axc.clipboard.text")) {
                 String content = Uri.parse(url).getQueryParameter("text");
                 copyToClipboard("axc", content);
                 return true;
@@ -292,6 +298,7 @@ public class MainActivity extends AppCompatActivity {
             } else {//5.0以上的加载方法
                 shouldOverrideUrlLoading(view, request.getUrl().toString());
             }
+
             return true;
         }
 
@@ -559,8 +566,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void message() {
-        BadgeUtilDeskTop.setBadgeCount(this,0);
+    private void message(int msgCount) {
+        BadgeUtilDeskTop.setBadgeCount(this, msgCount);
     }
 
     /**
@@ -568,7 +575,7 @@ public class MainActivity extends AppCompatActivity {
      *
      * @param context The context of the application package.
      * @return launcher activity name of this application. From the
-     *         "android:name" attribute.
+     * "android:name" attribute.
      */
     private static String getLauncherClassName(Context context) {
         PackageManager packageManager = context.getPackageManager();
@@ -591,6 +598,30 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return info.activityInfo.name;
+    }
+
+
+    /**
+     * Return pseudo unique ID
+     * @return ID
+     */
+    public static String getUniquePsuedoID()
+    {
+        String m_szDevIDShort = "35" + (Build.BOARD.length() % 10) + (Build.BRAND.length() % 10) + (Build.CPU_ABI.length() % 10) +
+                (Build.DEVICE.length() % 10) + (Build.MANUFACTURER.length() % 10) + (Build.MODEL.length() % 10) +
+                (Build.PRODUCT.length() % 10);
+
+        String serial = null;
+        try{
+            serial = android.os.Build.class.getField("SERIAL").get(null).toString();
+            return new UUID(m_szDevIDShort.hashCode(), serial.hashCode()).toString();
+        }
+        catch (Exception e){
+            // String needs to be initialized
+            serial = "serial"; // some value
+        }
+
+        return new UUID(m_szDevIDShort.hashCode(), serial.hashCode()).toString();
     }
 
 
